@@ -16,7 +16,7 @@ except:
     from osgeo import gdal
 
 
-def downsample_raster(in_path, out_path, downsampling_factor):
+def downsample_raster(in_path: str, out_path: str, downsampling_factor: float) -> None:
     gdal_raster = gdal.Open(in_path)
     width, height = gdal_raster.RasterXSize, gdal_raster.RasterYSize
     gdal.Translate(
@@ -28,7 +28,9 @@ def downsample_raster(in_path, out_path, downsampling_factor):
     )
 
 
-def upsample_raster(in_path, out_path, target_height, target_width):
+def upsample_raster(
+    in_path: str, out_path: str, target_height: int, target_width: int
+) -> None:
     gdal.Translate(
         out_path,
         in_path,
@@ -39,7 +41,7 @@ def upsample_raster(in_path, out_path, target_height, target_width):
     )
 
 
-def generate_slope_raster(in_path, out_path):
+def generate_slope_raster(in_path: str, out_path: str) -> None:
     """
     Generates a slope raster from the input DEM raster.
     Input:
@@ -51,12 +53,18 @@ def generate_slope_raster(in_path, out_path):
     os.system(cmd)
 
 
-def get_mean(raster_path, ignore_value=-9999.0):
+def get_mean(raster_path: str, ignore_value: int = -9999.0) -> np.ndarray:
     np_raster = np.array(gdal.Open(raster_path).ReadAsArray())
     return np_raster[np_raster != ignore_value].mean()
 
 
-def extract_dtm(dsm_path, ground_dem_path, non_ground_dem_path, radius, terrain_slope):
+def extract_dtm(
+    dsm_path: str,
+    ground_dem_path: str,
+    non_ground_dem_path: str,
+    radius: int,
+    terrain_slope: float,
+) -> None:
     """
     Generates a ground DEM and non-ground DEM raster from the input DSM raster.
     Input:
@@ -73,7 +81,9 @@ def extract_dtm(dsm_path, ground_dem_path, non_ground_dem_path, radius, terrain_
     os.system(cmd)
 
 
-def remove_noise(ground_dem_path, out_path, ignore_value=-99999.0):
+def remove_noise(
+    ground_dem_path: str, out_path: str, ignore_value: int = -99999.0
+) -> None:
     """
     Removes noise (high elevation data points like roofs, etc.) from the ground DEM raster.
     Replaces values in those pixels with No data Value (-99999.0)
@@ -91,7 +101,9 @@ def remove_noise(ground_dem_path, out_path, ignore_value=-99999.0):
     save_array_as_geotif(ground_np, ground_dem_path, out_path)
 
 
-def save_array_as_geotif(array, source_tif_path, out_path):
+def save_array_as_geotif(
+    array: np.ndarray, source_tif_path: str, out_path: str
+) -> None:
     """
     Generates a geotiff raster from the input numpy array (height * width * depth)
     Input:
@@ -121,7 +133,7 @@ def save_array_as_geotif(array, source_tif_path, out_path):
     dataset = None
 
 
-def sdat_to_gtiff(sdat_raster_path, out_gtiff_path):
+def sdat_to_gtiff(sdat_raster_path: str, out_gtiff_path: str) -> None:
     gdal.Translate(
         out_gtiff_path,
         sdat_raster_path,
@@ -129,7 +141,7 @@ def sdat_to_gtiff(sdat_raster_path, out_gtiff_path):
     )
 
 
-def close_gaps(in_path, out_path, threshold=0.1):
+def close_gaps(in_path: str, out_path: str, threshold: float = 0.1) -> None:
     """
     Interpolates the holes (no data value) in the input raster.
     Input:
@@ -144,7 +156,7 @@ def close_gaps(in_path, out_path, threshold=0.1):
     os.system(cmd)
 
 
-def smoothen_raster(in_path, out_path, radius=2):
+def smoothen_raster(in_path: str, out_path: str, radius: int = 2) -> None:
     """
     Applies gaussian filter to the input raster.
     Input:
@@ -159,7 +171,9 @@ def smoothen_raster(in_path, out_path, radius=2):
     os.system(cmd)
 
 
-def subtract_rasters(rasterA_path, rasterB_path, out_path, no_data_value=-99999.0):
+def subtract_rasters(
+    rasterA_path: str, rasterB_path: str, out_path: str, no_data_value: int = -99999.0
+) -> None:
     cmd = 'gdal_calc.py -A {} -B {} --outfile {} --NoDataValue={} --calc="A-B"'.format(
         rasterA_path, rasterB_path, out_path, no_data_value
     )
@@ -167,8 +181,12 @@ def subtract_rasters(rasterA_path, rasterB_path, out_path, no_data_value=-99999.
 
 
 def replace_values(
-    rasterA_path, rasterB_path, out_path, no_data_value=-99999.0, threshold=0.98
-):
+    rasterA_path: str,
+    rasterB_path: str,
+    out_path: str,
+    no_data_value: int = -99999.0,
+    threshold: float = 0.98,
+) -> None:
     """
     Replaces values in input rasterA with no_data_value where cell value >= threshold in rasterB
     Input:
@@ -190,8 +208,11 @@ def replace_values(
 
 
 def expand_holes_in_raster(
-    in_path, search_window=7, no_data_value=-99999.0, threshold=50
-):
+    in_path: str,
+    search_window: int = 7,
+    no_data_value: int = -99999.0,
+    threshold: float = 50,
+) -> np.ndarray:
     """
     Expands holes (cells with no_data_value) in the input raster.
     Input:
@@ -213,7 +234,7 @@ def expand_holes_in_raster(
             ]
             if (
                 np.count_nonzero(window == no_data_value)
-                >= (threshold * search_window ** 2) / 100
+                >= (threshold * search_window**2) / 100
             ):
                 try:
                     np_raster[i, j] = no_data_value
@@ -222,7 +243,7 @@ def expand_holes_in_raster(
     return np_raster
 
 
-def get_raster_crs(raster_path):
+def get_raster_crs(raster_path: str) -> int:
     """
     Returns the CRS (Coordinate Reference System) of the raster
     Input:
@@ -232,7 +253,7 @@ def get_raster_crs(raster_path):
     return raster.crs
 
 
-def get_raster_resolution(raster_path):
+def get_raster_resolution(raster_path: str) -> float:
     raster = gdal.Open(raster_path)
     raster_geotrans = raster.GetGeoTransform()
     x_res = raster_geotrans[1]
@@ -240,7 +261,7 @@ def get_raster_resolution(raster_path):
     return x_res, y_res
 
 
-def get_res_and_downsample(dsm_path, temp_dir):
+def get_res_and_downsample(dsm_path: str, temp_dir: str) -> str:
     # check DSM resolution. Downsample if DSM is of very high resolution to save processing time.
     x_res, y_res = get_raster_resolution(dsm_path)  # resolutions are in meters
     dsm_name = dsm_path.split("/")[-1].split(".")[0]
@@ -264,7 +285,7 @@ def get_res_and_downsample(dsm_path, temp_dir):
     return dsm_path
 
 
-def get_updated_params(dsm_path, search_radius, smoothen_radius):
+def get_updated_params(dsm_path: str, search_radius: int, smoothen_radius: int) -> int:
     # search_radius and smoothen_radius are set wrt to 30cm DSM
     # returns updated parameters if DSM is of coarser resolution
     x_res, y_res = get_raster_resolution(dsm_path)  # resolutions are in meters
@@ -281,12 +302,12 @@ def get_updated_params(dsm_path, search_radius, smoothen_radius):
 
 
 def main(
-    dsm_path,
-    out_dir,
-    search_radius=40,
-    smoothen_radius=45,
-    dsm_replace_threshold_val=0.98,
-):
+    dsm_path: str,
+    out_dir: str,
+    search_radius: int = 40,
+    smoothen_radius: int = 45,
+    dsm_replace_threshold_val: float = 0.98,
+) -> str:
     # master function that calls all other functions
     os.makedirs(out_dir, exist_ok=True)
     temp_dir = os.path.join(out_dir, "temp_files")
