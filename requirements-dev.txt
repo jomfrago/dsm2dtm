@@ -1,1 +1,3 @@
 pytest
+fake-geo-images
+rasterio

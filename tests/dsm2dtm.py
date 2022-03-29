@@ -9,6 +9,8 @@ import os
 import numpy as np
 import rasterio
 import argparse
+from typing import Union
+from pathlib import Path
 
 try:
     import gdal
@@ -16,24 +18,44 @@ except:
     from osgeo import gdal
 
 
-def downsample_raster(in_path: str, out_path: str, downsampling_factor: float) -> None:
-    gdal_raster = gdal.Open(in_path)
+def downsample_raster(
+    in_path: Union[str, Path], out_path: Union[str, Path], downsampling_factor: float
+) -> None:
+    """
+    Generates a downsampled raster, downsampled by a factor of downsampling_factor.
+    Args:
+        in_path: Path to the input tiff which needs to be downsampled.
+        out_path: Path where the downsampled tiff will be generated.
+        downsampling_factor: Factor by which the input image will be downsampled.
+    """
+    gdal_raster = gdal.Open(str(in_path))
     width, height = gdal_raster.RasterXSize, gdal_raster.RasterYSize
     gdal.Translate(
-        out_path,
-        in_path,
+        str(out_path),
+        str(in_path),
         width=int((width // downsampling_factor)),
         height=int((height // downsampling_factor)),
         outputType=gdal.GDT_Float32,
     )
 
 
-def upsample_raster(
-    in_path: str, out_path: str, target_height: int, target_width: int
+def resample_raster(
+    in_path: Union[str, Path],
+    out_path: Union[str, Path],
+    target_height: int,
+    target_width: int,
 ) -> None:
+    """
+    Resamples the input raster to match with the target shape.
+    Args:
+        in_path: Path to the input tiff which needs to be downsampled.
+        out_path: Path where the downsampled tiff will be generated.
+        target_width: Width of the resulting tiff image.
+        target_height: Height of the resulting tiff image.
+    """
     gdal.Translate(
-        out_path,
-        in_path,
+        str(out_path),
+        str(in_path),
         width=target_width,
         height=target_height,
         resampleAlg="bilinear",
@@ -41,39 +63,47 @@ def upsample_raster(
     )
 
 
-def generate_slope_raster(in_path: str, out_path: str) -> None:
+def generate_slope_raster(
+    in_path: Union[str, Path], out_path: Union[str, Path]
+) -> None:
     """
     Generates a slope raster from the input DEM raster.
-    Input:
-        in_path: {string} path to the DEM raster
-    Output:
-        out_path: {string} path to the generated slope image
+    Args:
+        in_path: path to the DEM raster
+        out_path: path to the generated slope image
     """
     cmd = "gdaldem slope -alg ZevenbergenThorne {} {}".format(in_path, out_path)
     os.system(cmd)
 
 
-def get_mean(raster_path: str, ignore_value: int = -9999.0) -> np.ndarray:
-    np_raster = np.array(gdal.Open(raster_path).ReadAsArray())
+def get_mean(raster_path: Union[str, Path], ignore_value: int = -9999.0) -> float:
+    """
+    Returns the mean pixel value of the input raster while ingorning the ignore_value
+    Args:
+        raster_path: Path to the input tiff file
+        ignore_value: Pixel value that will be ignored in calculation of mean.
+    Returns:
+        Average Pixel value.
+    """
+    np_raster = np.array(gdal.Open(str(raster_path)).ReadAsArray())
     return np_raster[np_raster != ignore_value].mean()
 
 
 def extract_dtm(
-    dsm_path: str,
-    ground_dem_path: str,
-    non_ground_dem_path: str,
+    dsm_path: Union[str, Path],
+    ground_dem_path: Union[str, Path],
+    non_ground_dem_path: Union[str, Path],
     radius: int,
     terrain_slope: float,
 ) -> None:
     """
     Generates a ground DEM and non-ground DEM raster from the input DSM raster.
-    Input:
-        dsm_path: {string} path to the DSM raster
-        radius: {int} Search radius of kernel in cells.
-        terrain_slope: {float} average slope of the input terrain
-    Output:
-        ground_dem_path: {string} path to the generated ground DEM raster
-        non_ground_dem_path: {string} path to the generated non-ground DEM raster
+    Args:
+        dsm_path: Path to the input DSM raster.
+        radius: Search radius of kernel (in unit: number of cells)
+        terrain_slope: average slope value of the input DSM
+        ground_dem_path: Path where ground DEM raster will be generated
+        non_ground_dem_path: Path where non-ground DEM raster will be generated
     """
     cmd = "saga_cmd grid_filter 7 -INPUT {} -RADIUS {} -TERRAINSLOPE {} -GROUND {} -NONGROUND {}".format(
         dsm_path, radius, terrain_slope, ground_dem_path, non_ground_dem_path
@@ -82,42 +112,46 @@ def extract_dtm(
 
 
 def remove_noise(
-    ground_dem_path: str, out_path: str, ignore_value: int = -99999.0
+    ground_dem_path: Union[str, Path],
+    out_path: Union[str, Path],
+    ignore_value: float = -99999.0,
+    std_factor: float = 1.5,
+    no_data_value: float = -99999.0,
 ) -> None:
     """
-    Removes noise (high elevation data points like roofs, etc.) from the ground DEM raster.
-    Replaces values in those pixels with No data Value (-99999.0)
-    Input:
-        ground_dem_path: {string} path to the generated ground DEM raster
-        no_data_value: {float} replacing value in the ground raster (to be treated as No Data Value)
-    Output:
-        out_path: {string} path to the filtered ground DEM raster
+    Repalce noisy pixels (high elevation data points like roofs, etc.) in ground DEM raster with No-data Value (-99999.0)
+    Args:
+        ground_dem_path: path to the generated ground DEM raster
+        out_path: path to the filtered ground DEM raster
+        ignore_value: Pixel value which will be ignored during calulations. Generally, this should be equal to no-data value
+        std_factor: Standard deviation factor used while calculating threshold value.
+        no_data_value: replacing value in the ground raster (useful for rendering in GIS visulaization softwares).
+
     """
-    ground_np = np.array(gdal.Open(ground_dem_path).ReadAsArray())
+    ground_np = np.array(gdal.Open(str(ground_dem_path)).ReadAsArray())
     std = ground_np[ground_np != ignore_value].std()
     mean = ground_np[ground_np != ignore_value].mean()
-    threshold_value = mean + 1.5 * std
-    ground_np[ground_np >= threshold_value] = -99999.0
+    threshold_value = mean + std_factor * std
+    ground_np[ground_np >= threshold_value] = no_data_value
     save_array_as_geotif(ground_np, ground_dem_path, out_path)
 
 
 def save_array_as_geotif(
-    array: np.ndarray, source_tif_path: str, out_path: str
+    array: np.ndarray, source_tif_path: Union[str, Path], out_path: Union[str, Path]
 ) -> None:
     """
     Generates a geotiff raster from the input numpy array (height * width * depth)
-    Input:
-        array: {numpy array} numpy array to be saved as geotiff
-        source_tif_path: {string} path to the geotiff from which projection and geotransformation information will be extracted.
-    Output:
-        out_path: {string} path to the generated Geotiff raster
+    Args:
+        array: numpy array to be saved as geotiff
+        source_tif_path: path to the reference geotiff from which projection and geotransformation information will be extracted.
+        out_path: Path where Geotiff raster will be generated
     """
     if len(array.shape) > 2:
         height, width, depth = array.shape
     else:
         height, width = array.shape
         depth = 1
-    source_tif = gdal.Open(source_tif_path)
+    source_tif = gdal.Open(str(source_tif_path))
     driver = gdal.GetDriverByName("GTiff")
     dataset = driver.Create(out_path, width, height, depth, gdal.GDT_Float32)
     if depth != 1:
@@ -133,10 +167,18 @@ def save_array_as_geotif(
     dataset = None
 
 
-def sdat_to_gtiff(sdat_raster_path: str, out_gtiff_path: str) -> None:
+def sdat_to_gtiff(
+    sdat_raster_path: Union[str, Path], out_gtiff_path: Union[str, Path]
+) -> None:
+    """
+    Generates a GeoTIFF corresponding to input sdat image.
+    Args:
+        sdat_raster_path: Path to the input sdat image.
+        out_gtiff_path: Path where the geotiff will be generated.
+    """
     gdal.Translate(
-        out_gtiff_path,
-        sdat_raster_path,
+        str(out_gtiff_path),
+        str(sdat_raster_path),
         format="GTiff",
     )
 
@@ -249,13 +291,20 @@ def get_raster_crs(raster_path: str) -> int:
     Input:
         raster_path: {string} path to the source tif image
     """
-    raster = rasterio.open(raster_path)
-    return raster.crs
+    with rasterio.open(raster_path) as src:
+        return int(src.crs.data["init"].split(":")[-1])
 
 
-def get_raster_resolution(raster_path: str) -> float:
-    raster = gdal.Open(raster_path)
-    raster_geotrans = raster.GetGeoTransform()
+def get_raster_resolution(raster_path: Union[str, Path]) -> float:
+    """
+    Returns the X and Y resolution of the raster.
+    Args:
+        raster_path: Path to the source tiff image.
+    Returns:
+        X and Y resolution
+    """
+    src = gdal.Open(str(raster_path))
+    raster_geotrans = src.GetGeoTransform()
     x_res = raster_geotrans[1]
     y_res = -raster_geotrans[5]
     return x_res, y_res
