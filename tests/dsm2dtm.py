@@ -345,9 +345,9 @@ def get_res_and_downsample(dsm_path: Union[str, Path], temp_dir: Union[str, Path
             # Dowmsampling DSM
             downsample_raster(dsm_path, downsampled_dsm_path, downsampling_factor)
             dsm_path = downsampled_dsm_path
-    # import ipdb
-    # ipdb.set_trace()
-    return dsm_path
+    # impo.rt ipdb
+    # ipdbset_trace()
+    return str(dsm_path)
 
 
 def get_updated_params(dsm_path: str, search_radius: int, smoothen_radius: int) -> int:
