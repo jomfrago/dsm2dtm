@@ -163,8 +163,12 @@ def test_subtract_rasters(test_image1, test_image2):
     assert subtracted_array.mean() == 4.2759552001953125
 
 
-def test_replace_values():
-    pass
+def test_replace_values(test_image1, test_image2):
+    dsm2dtm.replace_values(test_image1, test_image2, "/tmp/temp_dsm2dtm/replaced.tif", -99999.0, 3.0)
+    assert os.path.isfile("/tmp/temp_dsm2dtm/replaced.tif")
+    replaced_array = gdal.Open("/tmp/temp_dsm2dtm/replaced.tif").ReadAsArray()
+    assert replaced_array.shape == (256, 256)
+    assert replaced_array.mean() == 3.769256591796875
 
 
 def test_expand_holes_in_raster():

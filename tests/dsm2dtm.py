@@ -76,7 +76,7 @@ def generate_slope_raster(
     os.system(cmd)
 
 
-def get_mean(raster_path: Union[str, Path], ignore_value: int = -9999.0) -> float:
+def get_mean(raster_path: Union[str, Path], ignore_value: float = -9999.0) -> float:
     """
     Returns the mean pixel value of the input raster while ingorning the ignore_value
     Args:
@@ -100,10 +100,10 @@ def extract_dtm(
     Generates a ground DEM and non-ground DEM raster from the input DSM raster.
     Args:
         dsm_path: Path to the input DSM raster.
-        radius: Search radius of kernel (in unit: number of cells)
-        terrain_slope: average slope value of the input DSM
         ground_dem_path: Path where ground DEM raster will be generated
         non_ground_dem_path: Path where non-ground DEM raster will be generated
+        radius: Search radius of kernel (in unit: number of cells)
+        terrain_slope: average slope value of the input DSM
     """
     cmd = "saga_cmd grid_filter 7 -INPUT {} -RADIUS {} -TERRAINSLOPE {} -GROUND {} -NONGROUND {}".format(
         dsm_path, radius, terrain_slope, ground_dem_path, non_ground_dem_path
@@ -126,7 +126,6 @@ def remove_noise(
         ignore_value: Pixel value which will be ignored during calulations. Generally, this should be equal to no-data value
         std_factor: Standard deviation factor used while calculating threshold value.
         no_data_value: replacing value in the ground raster (useful for rendering in GIS visulaization softwares).
-
     """
     ground_np = np.array(gdal.Open(str(ground_dem_path)).ReadAsArray())
     std = ground_np[ground_np != ignore_value].std()
@@ -188,8 +187,8 @@ def close_gaps(in_path: Union[str, Path], out_path: Union[str, Path], threshold:
     Generates a raster with interpolated (closed) holes (no data value) in the input raster.
     Args:
         in_path: Path to the input raster with holes
-        threshold: Tension Threshold
         out_path: Path where the raster with closed holes will be generated.
+        threshold: Tension Threshold
     """
     cmd = "saga_cmd grid_tools 7 -INPUT {} -THRESHOLD {} -RESULT {}".format(
         str(in_path), threshold, str(out_path)
@@ -212,7 +211,7 @@ def smoothen_raster(in_path: Union[str, Path], out_path: Union[str, Path], radiu
 
 
 def subtract_rasters(
-    rasterA_path: Union[str, Path], rasterB_path: Union[str, Path], out_path: Union[str, Path], no_data_value: int = -99999.0
+    rasterA_path: Union[str, Path], rasterB_path: Union[str, Path], out_path: Union[str, Path], no_data_value: float = -99999.0
 ) -> None:
     """
     Generates a raster obtained by subtracting rasterB from raster A.
@@ -228,25 +227,26 @@ def subtract_rasters(
 
 
 def replace_values(
-    rasterA_path: str,
-    rasterB_path: str,
-    out_path: str,
-    no_data_value: int = -99999.0,
+    rasterA_path: Union[str, Path],
+    rasterB_path: Union[str, Path],
+    out_path: Union[str, Path],
+    no_data_value: float = -99999.0,
     threshold: float = 0.98,
 ) -> None:
     """
-    Replaces values in input rasterA with no_data_value where cell value >= threshold in rasterB
-    Input:
-        rasterA_path: {string} path to the input rasterA
-        rasterB_path: {string} path to the input rasterB
-    Output:
-        out_path: {string} path to the generated raster
+    Generates a new raster with values in input rasterA replaceted with no_data_value where cell value >= threshold in rasterB
+    Args:
+        rasterA_path: Path to the input rasterA in which the values will be replaced.
+        rasterB_path: Path to the reference rasterB. Its cells will be evaluated against the threshold value.
+        out_path: Path where the ouput raster will be generated.
+        no_data_value: replacing value in rasterA (useful for rendering in GIS visulaization softwares).
+        threshold: Threshold cell value against which the cells of rasterB will be evaluated.
     """
     cmd = 'gdal_calc.py -A {} --NoDataValue={} -B {} --outfile {} --calc="{}*(B>={}) + (A)*(B<{})"'.format(
-        rasterA_path,
+        str(rasterA_path),
         no_data_value,
-        rasterB_path,
-        out_path,
+        str(rasterB_path),
+        str(out_path),
         no_data_value,
         threshold,
         threshold,
