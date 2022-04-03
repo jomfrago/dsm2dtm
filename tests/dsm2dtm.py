@@ -183,41 +183,46 @@ def sdat_to_gtiff(
     )
 
 
-def close_gaps(in_path: str, out_path: str, threshold: float = 0.1) -> None:
+def close_gaps(in_path: Union[str, Path], out_path: Union[str, Path], threshold: float = 0.1) -> None:
     """
-    Interpolates the holes (no data value) in the input raster.
-    Input:
-        in_path: {string} path to the input raster with holes
-        threshold: {float} Tension Threshold
-    Output:
-        out_path: {string} path to the generated raster with closed holes.
+    Generates a raster with interpolated (closed) holes (no data value) in the input raster.
+    Args:
+        in_path: Path to the input raster with holes
+        threshold: Tension Threshold
+        out_path: Path where the raster with closed holes will be generated.
     """
     cmd = "saga_cmd grid_tools 7 -INPUT {} -THRESHOLD {} -RESULT {}".format(
-        in_path, threshold, out_path
+        str(in_path), threshold, str(out_path)
     )
     os.system(cmd)
 
 
-def smoothen_raster(in_path: str, out_path: str, radius: int = 2) -> None:
+def smoothen_raster(in_path: Union[str, Path], out_path: Union[str, Path], radius: int = 2) -> None:
     """
-    Applies gaussian filter to the input raster.
-    Input:
-        in_path: {string} path to the input raster
-        radius: {int} kernel radius to be used for smoothing
-    Output:
-        out_path: {string} path to the generated smoothened raster
+    Generates a new raster with gaussian filter applied on the input raster.
+    Args:
+        in_path: Path to the input raster.s
+        out_path: Path where the smoothened raster will be generated.
+        radius: kernel radius (in unit: number of cells) to be used for smoothing
     """
     cmd = "saga_cmd grid_filter 1 -INPUT {} -RESULT {} -KERNEL_TYPE 0 -KERNEL_RADIUS {}".format(
-        in_path, out_path, radius
+        str(in_path), str(out_path), radius
     )
     os.system(cmd)
 
 
 def subtract_rasters(
-    rasterA_path: str, rasterB_path: str, out_path: str, no_data_value: int = -99999.0
+    rasterA_path: Union[str, Path], rasterB_path: Union[str, Path], out_path: Union[str, Path], no_data_value: int = -99999.0
 ) -> None:
+    """
+    Generates a raster obtained by subtracting rasterB from raster A.
+    Args:
+        rasterA_path: Path to the raster A from which raster B will be subtracted.
+        rasterB_path: Path to the raster B which will be subtracted from raster A.
+        out_path: Path where the subtracted raster will be generated.
+    """
     cmd = 'gdal_calc.py -A {} -B {} --outfile {} --NoDataValue={} --calc="A-B"'.format(
-        rasterA_path, rasterB_path, out_path, no_data_value
+        str(rasterA_path), str(rasterB_path), str(out_path), no_data_value
     )
     os.system(cmd)
 
