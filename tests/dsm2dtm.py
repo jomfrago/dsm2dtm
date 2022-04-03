@@ -255,21 +255,21 @@ def replace_values(
 
 
 def expand_holes_in_raster(
-    in_path: str,
+    in_path: Union[str, Path],
     search_window: int = 7,
-    no_data_value: int = -99999.0,
-    threshold: float = 50,
+    no_data_value: float = -99999.0,
+    threshold: float = 50.0,
 ) -> np.ndarray:
     """
-    Expands holes (cells with no_data_value) in the input raster.
-    Input:
-        in_path: {string} path to the input raster
-        search_window: {int} kernel size to be used as window
-        threshold: {float} threshold on percentage of cells with no_data_value
-    Output:
-        np_raster: {numpy array} Returns the modified input raster's array
+    Returns an array with expanded holes (cells with no_data_value) in the input raster.
+    Args:
+        in_path: Path to the input raster
+        search_window: kernel size (in unit: number of cells) to be used as window
+        threshold: Threshold on percentage of cells with no_data_value
+    Returns:
+        np_raster: Returns the modified input raster's array
     """
-    np_raster = np.array(gdal.Open(in_path).ReadAsArray())
+    np_raster = np.array(gdal.Open(str(in_path)).ReadAsArray())
     height, width = np_raster.shape[0], np_raster.shape[1]
     for i in range(int((search_window - 1) / 2), width, 1):
         for j in range(int((search_window - 1) / 2), height, 1):
@@ -290,13 +290,13 @@ def expand_holes_in_raster(
     return np_raster
 
 
-def get_raster_crs(raster_path: str) -> int:
+def get_raster_crs(raster_path: Union[str, Path]) -> int:
     """
     Returns the CRS (Coordinate Reference System) of the raster
-    Input:
-        raster_path: {string} path to the source tif image
+    Args:
+        raster_path: Path to the source tif image
     """
-    with rasterio.open(raster_path) as src:
+    with rasterio.open(str(raster_path)) as src:
         return int(src.crs.data["init"].split(":")[-1])
 
 
@@ -315,27 +315,38 @@ def get_raster_resolution(raster_path: Union[str, Path]) -> float:
     return x_res, y_res
 
 
-def get_res_and_downsample(dsm_path: str, temp_dir: str) -> str:
-    # check DSM resolution. Downsample if DSM is of very high resolution to save processing time.
+def get_res_and_downsample(dsm_path: Union[str, Path], temp_dir: Union[str, Path]) -> str:
+    """
+    Checks input DSM's resolution. 
+    If the resolution is very high, downsamles the DSM and returns the downsampled DSM path (to save processing time).
+    Args:
+        dsm_path: Path to the input DSM raster.
+        temp_dir: Path to the directory where intermediate files will be generated.
+    Returns:
+        Downsampled DSM path or the input DSM path if not downsampled.
+    """
+    # TODO: Make these threhsold values as argument for this function.
     x_res, y_res = get_raster_resolution(dsm_path)  # resolutions are in meters
-    dsm_name = dsm_path.split("/")[-1].split(".")[0]
+    dsm_name = str(dsm_path).split("/")[-1].split(".")[0]
     dsm_crs = get_raster_crs(dsm_path)
     if dsm_crs != 4326:
         if x_res < 0.3 or y_res < 0.3:
             target_res = 0.3  # downsample to this resolution (in meters)
-            downsampling_factor = target_res / gdal.Open(dsm_path).GetGeoTransform()[1]
-            downsampled_dsm_path = os.path.join(temp_dir, dsm_name + "_ds.tif")
+            downsampling_factor = target_res / gdal.Open(str(dsm_path)).GetGeoTransform()[1]
+            downsampled_dsm_path = os.path.join(str(temp_dir), dsm_name + "_ds.tif")
             # Dowmsampling DSM
             downsample_raster(dsm_path, downsampled_dsm_path, downsampling_factor)
             dsm_path = downsampled_dsm_path
     else:
         if x_res < 2.514e-06 or y_res < 2.514e-06:
             target_res = 2.514e-06  # downsample to this resolution (in degrees)
-            downsampling_factor = target_res / gdal.Open(dsm_path).GetGeoTransform()[1]
-            downsampled_dsm_path = os.path.join(temp_dir, dsm_name + "_ds.tif")
+            downsampling_factor = target_res / gdal.Open(str(dsm_path)).GetGeoTransform()[1]
+            downsampled_dsm_path = os.path.join(str(temp_dir), dsm_name + "_ds.tif")
             # Dowmsampling DSM
             downsample_raster(dsm_path, downsampled_dsm_path, downsampling_factor)
             dsm_path = downsampled_dsm_path
+    # import ipdb
+    # ipdb.set_trace()
     return dsm_path
 
 

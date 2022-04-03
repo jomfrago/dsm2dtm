@@ -50,6 +50,42 @@ def test_image2():
     test_file2.unlink()
 
 
+@pytest.fixture(scope="session")
+def test_image1_high_res():
+    test_file1, _ = FakeGeoImage(256, 256, 1, "int8").create(
+        14,
+        from_bounds(
+            1370000.0,
+            2500000.0,
+            1370004.0,
+            2500004.0,
+            width=256,
+            height=256,
+        ),
+        "test_image1",
+    )
+    yield test_file1.resolve()
+    test_file1.unlink()
+
+
+@pytest.fixture(scope="session")
+def test_image1_crs4326():
+    test_file1, _ = FakeGeoImage(256, 256, 1, "int8", crs=4326).create(
+        14,
+        from_bounds(
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            width=256,
+            height=256,
+        ),
+        "test_image1",
+    )
+    yield test_file1.resolve()
+    test_file1.unlink()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def generate_test_dir():
     os.makedirs("/tmp/temp_dsm2dtm", exist_ok=True)
@@ -171,8 +207,10 @@ def test_replace_values(test_image1, test_image2):
     assert replaced_array.mean() == 3.769256591796875
 
 
-def test_expand_holes_in_raster():
-    pass
+def test_expand_holes_in_raster(test_image1):
+    new_array = dsm2dtm.expand_holes_in_raster(test_image1, 5, 1, 30)
+    assert new_array.shape == (256, 256)
+    assert new_array.mean() == 1.2519989013671875
 
 
 def test_get_raster_crs(test_image1):
@@ -183,9 +221,22 @@ def test_get_raster_resolution(test_image1):
     assert dsm2dtm.get_raster_resolution(test_image1) == (1.0, 1.0)
 
 
-def test_get_res_and_downsample():
-    pass
-
+@pytest.mark.parametrize(
+    "test_image", "array_mean_value",
+    [
+        # ("test_image1"),
+        ("test_image1_high_res", "20.02"),
+        # ("test_image1_crs4326"),
+    ],
+)
+# 3 testing scenarios - different CRS and different resolutions
+def test_get_res_and_downsample(test_image, array_mean_value, request):
+    test_image = request.getfixturevalue(test_image)
+    dsm_path = dsm2dtm.get_res_and_downsample(test_image, "/tmp/temp_dsm2dtm")
+    assert os.path.isfile(dsm_path)
+    dsm_array = gdal.Open(dsm_path).ReadAsArray()
+    assert dsm_array.shape == (256, 256)
+    assert dsm_array.mean == float(array_mean_value)
 
 def test_get_updated_params():
     pass
