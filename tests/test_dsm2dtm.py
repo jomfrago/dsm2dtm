@@ -154,10 +154,16 @@ def test_remove_noise(test_image1):
 
 
 def test_save_array_as_geotif(test_image1):
-    test_array = np.arange(120).reshape(3,4,10)
-    dsm2dtm.save_array_as_geotif(test_array, test_image1, "/tmp/temp_dsm2dtm/saved_array.tif")
+    test_array = np.arange(120).reshape(3, 4, 10)
+    dsm2dtm.save_array_as_geotif(
+        test_array, test_image1, "/tmp/temp_dsm2dtm/saved_array.tif"
+    )
     assert os.path.isfile("/tmp/temp_dsm2dtm/saved_array.tif")
-    assert gdal.Open("/tmp/temp_dsm2dtm/saved_array.tif").ReadAsArray().shape == (10, 3, 4)
+    assert gdal.Open("/tmp/temp_dsm2dtm/saved_array.tif").ReadAsArray().shape == (
+        10,
+        3,
+        4,
+    )
 
 
 def test_sdat_to_gtiff(test_image1):
@@ -170,11 +176,12 @@ def test_sdat_to_gtiff(test_image1):
         4,
     )
     assert os.path.isfile("/tmp/temp_dsm2dtm/ground.sdat")
-    dsm2dtm.sdat_to_gtiff("/tmp/temp_dsm2dtm/ground.sdat", "/tmp/temp_dsm2dtm/temp_sdat_to_gtiff.tif")
+    dsm2dtm.sdat_to_gtiff(
+        "/tmp/temp_dsm2dtm/ground.sdat", "/tmp/temp_dsm2dtm/temp_sdat_to_gtiff.tif"
+    )
     assert os.path.isfile("/tmp/temp_dsm2dtm/temp_sdat_to_gtiff.tif")
     sdat_array = gdal.Open("/tmp/temp_dsm2dtm/temp_sdat_to_gtiff.tif").ReadAsArray()
     assert sdat_array.shape == (256, 256)
-
 
 
 def test_close_gaps(test_image1):
@@ -192,7 +199,9 @@ def test_smoothen_raster(test_image1):
 
 
 def test_subtract_rasters(test_image1, test_image2):
-    dsm2dtm.subtract_rasters(test_image1, test_image2, "/tmp/temp_dsm2dtm/subtracted.tif")
+    dsm2dtm.subtract_rasters(
+        test_image1, test_image2, "/tmp/temp_dsm2dtm/subtracted.tif"
+    )
     assert os.path.isfile("/tmp/temp_dsm2dtm/subtracted.tif")
     subtracted_array = gdal.Open("/tmp/temp_dsm2dtm/subtracted.tif").ReadAsArray()
     assert subtracted_array.shape == (256, 256)
@@ -200,7 +209,9 @@ def test_subtract_rasters(test_image1, test_image2):
 
 
 def test_replace_values(test_image1, test_image2):
-    dsm2dtm.replace_values(test_image1, test_image2, "/tmp/temp_dsm2dtm/replaced.tif", -99999.0, 3.0)
+    dsm2dtm.replace_values(
+        test_image1, test_image2, "/tmp/temp_dsm2dtm/replaced.tif", -99999.0, 3.0
+    )
     assert os.path.isfile("/tmp/temp_dsm2dtm/replaced.tif")
     replaced_array = gdal.Open("/tmp/temp_dsm2dtm/replaced.tif").ReadAsArray()
     assert replaced_array.shape == (256, 256)
@@ -230,7 +241,9 @@ def test_get_raster_resolution(test_image1):
     ],
 )
 # 3 testing scenarios - different CRS and different resolutions
-def test_get_res_and_downsample(test_image, out_height, out_width, array_mean_value, request):
+def test_get_res_and_downsample(
+    test_image, out_height, out_width, array_mean_value, request
+):
     test_image = request.getfixturevalue(test_image)
     dsm_path = dsm2dtm.get_res_and_downsample(test_image, "/tmp/temp_dsm2dtm")
     assert os.path.isfile(dsm_path)
@@ -238,9 +251,40 @@ def test_get_res_and_downsample(test_image, out_height, out_width, array_mean_va
     assert dsm_array.shape == (int(out_height), int(out_width))
     assert dsm_array.mean() == float(array_mean_value)
 
-def test_get_updated_params():
-    pass
+
+@pytest.mark.parametrize(
+    "test_image, search_radius, smoothen_radius, out_search_radius, out_smoothen_radius",
+    [
+        ("test_image1", "5", "5", "16", "16"),
+        ("test_image1_high_res", "5", "5", "5", "5"),
+        ("test_image1_crs4326", "5", "5", "5", "5"),
+    ],
+)
+# 3 testing scenarios - different CRS and different resolutions
+def test_get_updated_params(
+    test_image,
+    search_radius,
+    smoothen_radius,
+    out_search_radius,
+    out_smoothen_radius,
+    request,
+):
+    test_image = request.getfixturevalue(test_image)
+    assert dsm2dtm.get_updated_params(
+        test_image, int(search_radius), int(smoothen_radius)
+    ) == (int(out_search_radius), int(out_smoothen_radius))
 
 
-def test_main():
-    pass
+@pytest.mark.parametrize(
+    "test_image",
+    [
+        ("test_image1"),
+        ("test_image1_high_res"),
+        ("test_image1_crs4326"),
+        ("test_image2"),
+    ],
+)
+def test_main(test_image, request):
+    test_image = request.getfixturevalue(test_image)
+    dtm_path = dsm2dtm.main(test_image, "/tmp/temp_dsm2dtm", 5, 5)
+    assert os.path.isfile(dtm_path)

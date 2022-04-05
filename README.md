@@ -54,3 +54,4 @@ DSM was derived from [this point cloud data](https://cloud.rockrobotic.com/share
 ## Planned Improvements
  - Minimize generation of intermediate files.
  - If input DSM is very big, break into smaller chunks and stitch back the resulting DTM
+ - Delete intermediate files after DTM is generated.

@@ -182,7 +182,9 @@ def sdat_to_gtiff(
     )
 
 
-def close_gaps(in_path: Union[str, Path], out_path: Union[str, Path], threshold: float = 0.1) -> None:
+def close_gaps(
+    in_path: Union[str, Path], out_path: Union[str, Path], threshold: float = 0.1
+) -> None:
     """
     Generates a raster with interpolated (closed) holes (no data value) in the input raster.
     Args:
@@ -196,7 +198,9 @@ def close_gaps(in_path: Union[str, Path], out_path: Union[str, Path], threshold:
     os.system(cmd)
 
 
-def smoothen_raster(in_path: Union[str, Path], out_path: Union[str, Path], radius: int = 2) -> None:
+def smoothen_raster(
+    in_path: Union[str, Path], out_path: Union[str, Path], radius: int = 2
+) -> None:
     """
     Generates a new raster with gaussian filter applied on the input raster.
     Args:
@@ -211,7 +215,10 @@ def smoothen_raster(in_path: Union[str, Path], out_path: Union[str, Path], radiu
 
 
 def subtract_rasters(
-    rasterA_path: Union[str, Path], rasterB_path: Union[str, Path], out_path: Union[str, Path], no_data_value: float = -99999.0
+    rasterA_path: Union[str, Path],
+    rasterB_path: Union[str, Path],
+    out_path: Union[str, Path],
+    no_data_value: float = -99999.0,
 ) -> None:
     """
     Generates a raster obtained by subtracting rasterB from raster A.
@@ -315,9 +322,11 @@ def get_raster_resolution(raster_path: Union[str, Path]) -> float:
     return x_res, y_res
 
 
-def get_res_and_downsample(dsm_path: Union[str, Path], temp_dir: Union[str, Path]) -> str:
+def get_res_and_downsample(
+    dsm_path: Union[str, Path], temp_dir: Union[str, Path]
+) -> str:
     """
-    Checks input DSM's resolution. 
+    Checks input DSM's resolution.
     If the resolution is very high, downsamles the DSM and returns the downsampled DSM path (to save processing time).
     Args:
         dsm_path: Path to the input DSM raster.
@@ -332,7 +341,9 @@ def get_res_and_downsample(dsm_path: Union[str, Path], temp_dir: Union[str, Path
     if dsm_crs != 4326:
         if x_res < 0.3 or y_res < 0.3:
             target_res = 0.3  # downsample to this resolution (in meters)
-            downsampling_factor = target_res / gdal.Open(str(dsm_path)).GetGeoTransform()[1]
+            downsampling_factor = (
+                target_res / gdal.Open(str(dsm_path)).GetGeoTransform()[1]
+            )
             downsampled_dsm_path = os.path.join(str(temp_dir), dsm_name + "_ds.tif")
             # Dowmsampling DSM
             downsample_raster(dsm_path, downsampled_dsm_path, downsampling_factor)
@@ -340,19 +351,27 @@ def get_res_and_downsample(dsm_path: Union[str, Path], temp_dir: Union[str, Path
     else:
         if x_res < 2.514e-06 or y_res < 2.514e-06:
             target_res = 2.514e-06  # downsample to this resolution (in degrees)
-            downsampling_factor = target_res / gdal.Open(str(dsm_path)).GetGeoTransform()[1]
+            downsampling_factor = (
+                target_res / gdal.Open(str(dsm_path)).GetGeoTransform()[1]
+            )
             downsampled_dsm_path = os.path.join(str(temp_dir), dsm_name + "_ds.tif")
             # Dowmsampling DSM
             downsample_raster(dsm_path, downsampled_dsm_path, downsampling_factor)
             dsm_path = downsampled_dsm_path
-    # impo.rt ipdb
-    # ipdbset_trace()
     return str(dsm_path)
 
 
-def get_updated_params(dsm_path: str, search_radius: int, smoothen_radius: int) -> int:
-    # search_radius and smoothen_radius are set wrt to 30cm DSM
-    # returns updated parameters if DSM is of coarser resolution
+def get_updated_params(
+    dsm_path: Union[str, Path], search_radius: int, smoothen_radius: int
+) -> int:
+    """
+    The default search_radius and smoothen_radius params are set wrt a DSM with 30 cm resolution.
+    Returns updated params if DSM is of coarser resolution.
+    Args:
+        dsm_path: Path to the input DSM raster.
+        search_radius: Search radius of kernel (in unit: number of cells)
+        smoothen_radius: kernel radius (in unit: number of cells) to be used for smoothing
+    """
     x_res, y_res = get_raster_resolution(dsm_path)  # resolutions are in meters
     dsm_crs = get_raster_crs(dsm_path)
     if dsm_crs != 4326:
@@ -367,12 +386,23 @@ def get_updated_params(dsm_path: str, search_radius: int, smoothen_radius: int) 
 
 
 def main(
-    dsm_path: str,
-    out_dir: str,
+    dsm_path: Union[str, Path],
+    out_dir: Union[str, Path],
     search_radius: int = 40,
     smoothen_radius: int = 45,
     dsm_replace_threshold_val: float = 0.98,
 ) -> str:
+    """
+    Generates and returns the DTM path for the input DSM path.
+    Args:
+        dsm_path: Path to the input DSM raster.
+        out_dir: Path where the DTM and other intermediate files will be generated.
+        search_radius: Search radius of kernel (in unit: number of cells)
+        smoothen_radius: kernel radius (in unit: number of cells) to be used for smoothing
+        dsm_replace_threshold_val: Threshold on height difference used for intermediate calculations.
+    Returns:
+        Generated DTM path.
+    """
     # master function that calls all other functions
     os.makedirs(out_dir, exist_ok=True)
     temp_dir = os.path.join(out_dir, "temp_files")
